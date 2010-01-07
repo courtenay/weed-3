@@ -18,8 +18,11 @@ module Weed
       "Weed!"
     end
 
+    # Record a hit with
+    #   { :q => { :bucket_id => 2 }}
+    # 
     post "/record" do
-      Stats.hit! params[:q]
+      Stats.hit! params[:q].merge("cdate" => Time.now)
       # ok
     end
     

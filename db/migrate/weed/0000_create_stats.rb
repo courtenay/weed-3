@@ -3,12 +3,17 @@ class CreateStats < Weed::ActiveRecord::Migration
     create_table :stats do |f|
       f.integer :bucket_id
       f.integer :counter
+      f.datetime :cdate
       f.timestamps
     end
-    create_table :facts do |f|
+    create_table :cached_stats do |f|
       f.integer :bucket_id
-      f.datetime :end_date
-      f.string   :period
+      f.integer :counter
+      f.integer :year
+      f.integer :month
+      f.integer :day
+      f.string  :period
+      f.timestamps
     end
     create_table :buckets do |f|
       f.string :name
