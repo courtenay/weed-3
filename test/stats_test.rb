@@ -21,7 +21,7 @@ class StatsTest < ActiveSupport::TestCase
   it "calculates daily results" do
     2.times { Weed::Stats.hit!({ :bucket_id => 13, :cdate => Time.now }) }
     3.times { Weed::Stats.hit!({ :bucket_id => 14, :cdate => Time.now }) }
-    assert_equal 2, Weed::Stats.by_day(Date.today, { :bucket_id => 13 }), "for #{Date.today} --"
+    assert_equal 2, Weed::Stats.by_day(Date.today, { :bucket_id => 13 })
     assert_equal 5, Weed::Stats.by_day(Date.today, {})
   end
   
@@ -45,7 +45,8 @@ class StatsTest < ActiveSupport::TestCase
     # assert_equal 2, Weed::Stats.by_month(Date.today.year, Date.today.month, {})
     # this shouldn't be days in month :/ it should be days up til now
 
-    Weed::Stats.by_year Date.today.year, {}
+    # generate year stats
+    Weed::Stats.by_year Date.today.year, { :bucket_id => 13 }
     assert_equal 1, Weed::CachedStats.count(:conditions => { :year => Date.today.year, :period => "year" })
     assert_equal 2, Weed::CachedStats.sum('counter', :conditions => { :year => Date.today.year, :period => "year" })
   end

@@ -4,7 +4,7 @@ class ApplicationTest < ActiveSupport::TestCase
   include Rack::Test::Methods
   
   fixtures do
-    cleanup Weed::Stats
+    cleanup Weed::Stats, Weed::CachedStats
   end
   
   def app
@@ -31,6 +31,23 @@ class ApplicationTest < ActiveSupport::TestCase
   it "records and shows stats" do
     post '/record', { :q => { "bucket_id" => 3 }, :user => 'jimmy-5' }
     get "/stats", { :q => { "bucket_id" => 3 } }
+    assert_equal({ :count => 1 }.to_json, last_response.body)
+  end
+  
+  it "shows daily stats" do
+    # Weed::CachedStats.delete_all # wtf
+    Weed::Stats.delete_all # wtf
+    post '/record', { :q => { "bucket_id" => 3 }, :user => 'jimmy-5' }
+    get "/stats/3/day/#{Date.today.to_s}"
+    assert_equal({ :count => 1 }.to_json, last_response.body)
+  end
+  
+  it "shows monthly stats" do
+    Weed::CachedStats.delete_all # wtf
+    Weed::Stats.delete_all # wtf
+
+    post '/record', { :q => { "bucket_id" => 3 }, :user => 'jimmy-5' }
+    get "/stats/3/month/#{Date.today.year}/#{Date.today.month}"
     assert_equal({ :count => 1 }.to_json, last_response.body)
   end
 end

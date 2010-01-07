@@ -3,6 +3,7 @@ require 'active_record'
 require 'sinatra/base' unless defined?(Sinatra)
 
 # only tested on 2.3.5
+# this file is a huge hack and I don't advise anyone run it at all
 module Weed
   module ActiveRecord
 #    include ::ActiveRecord

@@ -26,8 +26,19 @@ module Weed
       # ok
     end
     
+    # todo: get /stats/1/day/2009-12-5
+    # todo: get /stats/14/month/2009-12
+    # todo: get /stats/99/year/2009
     get "/stats" do
       { :count => Stats.count(:conditions => params[:q]) }.to_json
+    end
+    
+    get "/stats/:bucket_id/day/:date" do # hmm. year/month/day?
+      { :count => Stats.by_day(params[:date], { :bucket_id => params[:bucket_id] }) }.to_json
+    end
+
+    get "/stats/:bucket_id/month/:year/:month" do
+      { :count => Stats.by_month(params[:year].to_i, params[:month].to_i, { :bucket_id => params[:bucket_id].to_i }) }.to_json
     end
   end
 end
