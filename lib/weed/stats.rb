@@ -21,7 +21,7 @@ class Weed::Stats < Weed::ActiveRecord::Base
       Weed::Stats.sum('counter', :conditions => ['(cdate BETWEEN ? AND ?)', date.to_datetime, date.to_datetime + 1.day])
     end
     results = results.is_a?(Hash) ? results.values : [results]
-    Weed::CachedStats.override :year => date.year, :month => date.month, :day => date.day, :counter => results[0]
+    Weed::CachedStats.override :year => date.year, :month => date.month, :day => date.day, :counter => results[0], :period => "day"
     results[0]
   end
 
@@ -38,7 +38,7 @@ class Weed::Stats < Weed::ActiveRecord::Base
           end
         end # looks like we have all our data
         days = Weed::CachedStats.sum('counter', :conditions => ['month = ?', month])
-        # puts "days were: #{days}"
+        Weed::CachedStats.override :year => year, :period => 'year', :counter => days
         days
       end
     end
@@ -46,8 +46,17 @@ class Weed::Stats < Weed::ActiveRecord::Base
   
   def self.by_year(year, conditions)
     with_scope(:find => {:conditions => conditions }) do
-      unless cached = Weed::CachedStats.first(:conditions => ['year = ?'])
+      unless cached = Weed::CachedStats.first(:conditions => ['period = ? AND year = ?', 'year', year])
         # not found, generate from months
+        max = (year == Date.today.year) ? Date.today.month : 12
+        sum = 0
+        (1..max).each do |month|
+          sum += by_month(year, month, conditions)
+        end
+        Weed::CachedStats.override :year => year, :period => 'year', :counter => sum
+        Weed::CachedStats.sum('counter', :conditions => ['period = ? AND year = ?', 'year', year])
+      else
+        cached
       end
     end    
   end

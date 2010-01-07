@@ -33,6 +33,20 @@ class StatsTest < ActiveSupport::TestCase
     2.times { Weed::Stats.hit!({ :bucket_id => 13, :cdate => Date.today }) }
     assert_equal 2, Weed::Stats.by_month(Date.today.year, Date.today.month, {})
     # this shouldn't be days in month :/ it should be days up til now
-    assert_equal Time.now.day, Weed::CachedStats.count(:conditions => { :year => Date.today.year, :month => Date.today.month })
+    assert_equal Time.now.day, Weed::CachedStats.count(:conditions => { :year => Date.today.year, :month => Date.today.month, :period => "day" })
+  end
+
+  it "calculates yearly results" do
+    Weed::Stats.delete_all
+    Weed::CachedStats.delete_all
+    
+    2.times { Weed::Stats.hit!({ :bucket_id => 13, :cdate => Date.today - 35}) }
+    2.times { Weed::Stats.hit!({ :bucket_id => 13, :cdate => Date.today }) }
+    # assert_equal 2, Weed::Stats.by_month(Date.today.year, Date.today.month, {})
+    # this shouldn't be days in month :/ it should be days up til now
+
+    Weed::Stats.by_year Date.today.year, {}
+    assert_equal 1, Weed::CachedStats.count(:conditions => { :year => Date.today.year, :period => "year" })
+    assert_equal 2, Weed::CachedStats.sum('counter', :conditions => { :year => Date.today.year, :period => "year" })
   end
 end
