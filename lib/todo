@@ -1,0 +1,13 @@
+
+- switchable backends (redis / couch / sql / memcached)
+- lazy aggregation of hierarchical date data
+
+  sum of year (current month is 4)
+  select * from months
+    month-1: 25
+    month-2: 10
+    month-3: 20
+    month-4: ?
+
+  find out what's missing (month 4)
+  select * from days where month = 4

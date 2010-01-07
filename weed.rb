@@ -18,5 +18,13 @@ module Weed
       "Weed!"
     end
 
+    post "/record" do
+      Stats.hit! params[:q]
+      # ok
+    end
+    
+    get "/stats" do
+      { :count => Stats.count(:conditions => params[:q]) }.to_json
+    end
   end
 end
