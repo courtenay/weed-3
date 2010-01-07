@@ -1,14 +1,7 @@
 class Weed::CachedStats < Weed::ActiveRecord::Base
-
-  # day, month, year
-  def self.by_period(month)
-    raise
-    case period
-    when 'month' then -1
-    end
-  end
   
   def self.override(args)
+    # This is really just mongo's "$inc" function
     count = args.delete(:counter)
     affected_count = update_all ['counter = ?', count], args
     if affected_count == 0
