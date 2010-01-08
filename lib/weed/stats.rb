@@ -5,8 +5,14 @@ class Weed::Stats < Weed::ActiveRecord::Base
 
   # Records a hit
   def self.hit!(data)
+    # this is horrible
     raise "Bad params in #{data.keys.inspect}" unless data.keys == ["bucket_id", "cdate"] || data.keys == [:bucket_id, :cdate] || data.keys == [:cdate, :bucket_id] || data.keys == ["cdate", "bucket_id"]
     # need a "inc" like redis/mongo
+    # todo: different update strategies
+    # either: 
+    #   a) when making a hit, update all the other cached rows (current month, year)
+    #   b) just run the row caching periodically
+    # this depends on the speed at which our update job runs and the priority for read/write speed.
     affected_rows = update_all(['counter = counter + 1'], data)
     if affected_rows == 0
       Weed::Stats.create! data.merge(:counter => 1)
@@ -58,11 +64,30 @@ class Weed::Stats < Weed::ActiveRecord::Base
         (1..max).each do |month|
           sum += by_month(year, month, conditions)
         end
-        Weed::CachedStats.override(({:year => year, :period => 'year', :counter => sum}))
-        Weed::CachedStats.sum('counter', :conditions => ['period = ? AND year = ?', 'year', year])
+        Weed::CachedStats.override(conditions.merge({:year => year, :period => 'year', :counter => sum}))
+        # Weed::CachedStats.sum('counter', :conditions => ['period = ? AND year = ?', 'year', year])
+        sum
       else
-        cached
+        raise "not implemented!"
+        cached.counter
       end
     end    
+  end
+  
+  def self.by_total(conditions)
+    Weed::CachedStats.with_scope(:find => {:conditions => conditions}) do
+      unless cached = Weed::CachedStats.first(:conditions => ['period = ?', 'total'])
+        # regenerate total
+        # first find the full range of stats
+        oldest = Weed::Stats.first(:conditions => conditions)
+        newest = Weed::Stats.first(:conditions => conditions, :order => "cdate desc")
+        sum = 0
+        (oldest.cdate.year..newest.cdate.year).each do |year|
+          sum += by_year(year, conditions)
+        end
+        Weed::CachedStats.override(conditions.merge({:period => 'total', :counter => sum}))
+        Weed::CachedStats.sum('counter', :conditions => ['period = ?', 'total'])
+      end
+    end
   end
 end

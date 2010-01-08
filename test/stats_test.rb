@@ -50,4 +50,12 @@ class StatsTest < ActiveSupport::TestCase
     assert_equal 1, Weed::CachedStats.count(:conditions => { :year => Date.today.year, :period => "year" })
     assert_equal 2, Weed::CachedStats.sum('counter', :conditions => { :year => Date.today.year, :period => "year" })
   end
+  
+  it "calculates total results" do
+    # provide a range of year data
+    oldest_stat = Weed::Stats.hit!({:bucket_id => 5, :cdate => 3.year.ago })
+    newest_stat = Weed::Stats.hit!({:bucket_id => 5, :cdate => 1.day.ago })
+    
+    assert_equal 2, Weed::Stats.by_total(:bucket_id => 5)
+  end
 end

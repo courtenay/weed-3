@@ -5,6 +5,7 @@ class ApplicationTest < ActiveSupport::TestCase
   
   fixtures do
     cleanup Weed::Stats, Weed::CachedStats
+    Weed::Bucket.create :name => "monkeys"
   end
   
   def app
@@ -16,10 +17,20 @@ class ApplicationTest < ActiveSupport::TestCase
     assert last_response.ok?, last_response.body
   end
   
-  it "records stats" do
+  it "records stats with a bucket id" do
     post '/record', { :q => { "bucket_id" => 2 }, :user => 'jimmy-5' }
     assert last_response.ok?
     assert_equal 0, last_response.content_length
+  end
+  
+  it "records stats with params describing a bucket" do
+    Weed::Bucket.delete_all
+
+    post '/record', { :q => { 'name' => 'monkeys' }}
+    assert last_response.ok?
+    assert_equal 0, last_response.content_length
+    assert_equal 1, Weed::Bucket.count
+    assert_equal 1, Weed::Bucket.last.counter
   end
   
   it "shows stats" do
