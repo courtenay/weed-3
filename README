@@ -1,0 +1,95 @@
+Weed-3                    \../    .`'`^.
+A Sinatra Analytics API    \ \   (  @   )
+                            \ `./   (__/,
+                            .,____~~~~~-`
+
+(Picture is unrelated)
+=================================
+
+Gathering real-time analytics for arbitrary factors is simple enough to
+do at low levels of scale. However, once you are recording millions of
+items and storing them in SQL, the aggregate queries become too slow to
+realistically perform any kind of performant data analysis.
+
+This library aims to solve this problem well enough for the average web
+application to use in daily analytics activities by utilizing some data 
+warehousing concepts and smart caching.
+
+Installation
+------------
+Weed3 is built on Sinatra, a simple ruby web framework, the installation
+of which is beyond the scope of this file. 
+
+For rubyists, it should behave fairly well as a Rack middleware, or even 
+as a plugin, since the entire application is namespaced under the Weed module.
+
+For everyone else, you should be able to start this application as a daemon
+and proxy to it, or start it under your webserver (Apache 2 or Nginx) as
+a Passenger application.
+
+Your zeroth step is to create and load the database (later, modify the database 
+settings in environment.rb). The application should create its own sqlite3
+database in db/ but you'll want to load the schema.
+
+    $ rake db:migrate
+    
+Now, check to see if the tests all pass on your system.
+
+    $ rake test
+    
+    /System/Library/Frameworks/Ruby.framework/Versions/1.8/usr/bin/ruby -I"lib:test" "/Users/courtenay/.gem/ruby/1.8/gems/rake-0.8.7/lib/rake/rake_test_loader.rb" "test/application_test.rb" "test/stats_test.rb" 
+    Loaded suite /Users/courtenay/.gem/ruby/1.8/gems/rake-0.8.7/lib/rake/rake_test_loader
+    Started
+    ..............
+    Finished in 10.277229 seconds.
+    
+Start the server like this:
+
+    $ ruby -r weed.rb -e 'Weed::Application.run!'
+
+Access it in your browser at this URL: http://localhost:4567/ or test it with curl
+
+    $ curl http://localhost:4567
+    Weed!
+
+    $ curl http://localhost:4567/stats
+    {"count":7}
+
+Weed attempts to be a good RESTful citizen, so, send a hit with a POST
+
+    $ curl http://localhost:4567 -d"q[bucket_id]=10"
+    $ curl http://localhost:4567/stats
+    {"count":8}
+
+    $ curl http://localhost:4567/stats/10
+    {"count":1}
+
+    $ curl http://localhost:4567/stats/10/month/2010/1
+    {"count":1}
+    
+    $ curl http://localhost:4567/stats/10/week/2010/1/14/daily
+    [0,0,0,1,0,0,0]
+
+    For more information (there are more things you can do) see the 'weed.rb' file.
+
+How it works
+------------
+
+Weed3 records stats in the Stats table with a datestamp.
+
+When you request an aggregate (hits this month), it creates an entry in the 
+Weed::CachedStats table with the period scale ('month') the date (2009, 12)
+and the sum of daily counts so that you never have to run that aggregate again.
+(Note the daily counts are themselves aggregates, a count of all items that day)
+
+In addition, because it knows about the hierarchy of dates (year - month - day)
+if you do a sum of the year's dates, it will calculate the sum of the month's dates
+(only 12 items scanned in the aggregate) rather than the days (365 items)
+
+This part of the app is transparent to users.
+
+
+
+
+
+Copyright ©2010 Courtenay Gasking

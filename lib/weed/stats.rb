@@ -68,7 +68,7 @@ class Weed::Stats < Weed::ActiveRecord::Base
         # Weed::CachedStats.sum('counter', :conditions => ['period = ? AND year = ?', 'year', year])
         sum
       else
-        raise "not implemented!"
+        # raise "not implemented!"
         cached.counter
       end
     end    
@@ -82,11 +82,16 @@ class Weed::Stats < Weed::ActiveRecord::Base
         oldest = Weed::Stats.first(:conditions => conditions)
         newest = Weed::Stats.first(:conditions => conditions, :order => "cdate desc")
         sum = 0
-        (oldest.cdate.year..newest.cdate.year).each do |year|
-          sum += by_year(year, conditions)
+        if oldest && newest
+          (oldest.cdate.year..newest.cdate.year).each do |year|
+            sum += by_year(year, conditions)
+          end
+          Weed::CachedStats.override(conditions.merge({:period => 'total', :counter => sum}))
+          # Weed::CachedStats.sum('counter', :conditions => ['period = ?', 'total'])
+          sum
         end
-        Weed::CachedStats.override(conditions.merge({:period => 'total', :counter => sum}))
-        Weed::CachedStats.sum('counter', :conditions => ['period = ?', 'total'])
+      else
+        cached.counter
       end
     end
   end

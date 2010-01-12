@@ -45,6 +45,14 @@ module Weed
       { :count => Stats.count(:conditions => params[:q]) }.to_json
     end
     
+    get "/stats/all" do
+      Stats.all.to_json
+    end
+    
+    get "/stats/:bucket_id" do
+      { :count => Stats.by_total({ :bucket_id => params[:bucket_id] }) }.to_json
+    end
+    
     get "/stats/:bucket_id/day/:date" do # hmm. year/month/day?
       { :count => Stats.by_day(params[:date], { :bucket_id => params[:bucket_id] }) }.to_json
     end
