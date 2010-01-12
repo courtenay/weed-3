@@ -58,4 +58,7 @@ class StatsTest < ActiveSupport::TestCase
     
     assert_equal 2, Weed::Stats.by_total(:bucket_id => 5)
   end
+  
+  # todo: test number of queries for a cached result
+  # todo: test num of queries for a non cached result
 end

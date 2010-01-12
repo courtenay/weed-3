@@ -50,8 +50,15 @@ module Weed
     end
 
     get "/stats/:bucket_id/month/:year/:month" do
-      # todo: daily counts as well as total?
       { :count => Stats.by_month(params[:year].to_i, params[:month].to_i, { :bucket_id => params[:bucket_id].to_i }) }.to_json
+    end
+
+    get "/stats/:bucket_id/week/:year/:month/:day/daily" do
+      date = Date.new(params[:year].to_i, params[:month].to_i, params[:day].to_i)
+      # todo: i bet we could store this string in the month's data like [1,25,365,126] etc
+      (0..6).map do |day|
+        Stats.by_day((date - day).to_date, { :bucket_id => params[:bucket_id] })
+      end.to_json
     end
     
   end

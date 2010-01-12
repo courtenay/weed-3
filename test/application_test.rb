@@ -61,4 +61,17 @@ class ApplicationTest < ActiveSupport::TestCase
     get "/stats/3/month/#{Date.today.year}/#{Date.today.month}"
     assert_equal({ :count => 1 }.to_json, last_response.body)
   end
+
+  it "shows stats per day for a week" do
+    Weed::CachedStats.delete_all # wtf
+    Weed::Stats.delete_all # wtf
+
+    Weed::Stats.hit! :cdate => 7.days.ago, :bucket_id => 5
+    Weed::Stats.hit! :cdate => 6.days.ago, :bucket_id => 5
+    Weed::Stats.hit! :cdate => 6.days.ago, :bucket_id => 5
+    Weed::Stats.hit! :cdate => 5.days.ago, :bucket_id => 5
+
+    get "/stats/5/week/#{Date.today.year}/#{Date.today.month}/#{Date.today.day}/daily"
+    assert_equal "[0,0,0,0,0,1,2]", last_response.body
+  end
 end
