@@ -25,22 +25,16 @@ class Weed::Stats < Weed::ActiveRecord::Base
     date = Date.parse(date) if (date.is_a?(String))
     Weed::CachedStats.with_scope(:find => {:conditions => conditions}) do
       unless cached = Weed::CachedStats.first(:conditions => ['period = ? AND year = ? AND month = ? AND day = ?', 'day', date.year, date.month, date.day])
-        day = Weed::Stats.sum "counter", :conditions => ['cdate BETWEEN ? AND ?', date, date + 1.day]
+        day = Weed::Stats.with_scope(:find => { :conditions => conditions }) do
+          Weed::Stats.sum "counter", :conditions => ['cdate BETWEEN ? AND ?', date, date + 1.day]
+        end
+      # day = results.is_a?(Hash) ? results.values : [results] # maybe not needed?
         Weed::CachedStats.override conditions.merge({:year => date.year, :month => date.month, :day => date.day, :period => 'day', :counter => day})
         day
       else
         cached.counter
       end
     end
-      
-
-    results = nil # ugh
-    Weed::Stats.with_scope(:find => { :conditions => conditions }) do
-      results = Weed::Stats.sum('counter', :conditions => ['(cdate BETWEEN ? AND ?)', date.to_datetime, date.to_datetime + 1.day])
-      results = results.is_a?(Hash) ? results.values : [results]
-      Weed::CachedStats.override(conditions.merge({:year => date.year, :month => date.month, :day => date.day, :counter => results[0], :period => "day"}))
-    end
-    results[0]
   end
   
   def self.find_by_day(date, conditions)

@@ -109,7 +109,7 @@ class ApplicationTest < ActiveSupport::TestCase
     assert_equal({:state=>"success", "imported"=>5}.to_json, last_response.body)
     
     get "/stats/6/day/2009-12-5"
-    assert_equal({"count" => 4}.to_json, last_response.body)
+    assert_equal({"count" => 3}.to_json, last_response.body)
   end
   
   it "imports data, clearing existing values" do
