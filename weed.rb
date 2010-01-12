@@ -36,6 +36,8 @@ module Weed
       # ok
     end
     
+    # todo: import tuples like
+    #   [bucket_id, date], [bucket_id, date]
     post '/import/:bucket_id' do
       # todo: csv?
       counter = 0
