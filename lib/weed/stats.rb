@@ -41,7 +41,7 @@ class Weed::Stats < Weed::ActiveRecord::Base
   
   def self.find_by_day(date, conditions)
     Weed::Stats.with_scope(:find => { :conditions => conditions }) do
-      Weed::Stats.find :all, :conditions => ['(cdate BETWEEN ? AND ?)', date.to_datetime, date.to_datetime + 1.day]
+      Weed::Stats.find :all, :conditions => ['(cdate >= ? AND cdate < ?)', date.to_datetime, date.to_datetime + 1.day]
     end
   end
 
