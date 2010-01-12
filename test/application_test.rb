@@ -111,4 +111,8 @@ class ApplicationTest < ActiveSupport::TestCase
     get "/stats/6/day/2009-12-5"
     assert_equal({"count" => 4}.to_json, last_response.body)
   end
+  
+  it "imports data, clearing existing values" do
+    # ugh? wat?
+  end
 end

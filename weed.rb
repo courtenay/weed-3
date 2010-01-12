@@ -5,6 +5,7 @@ require File.dirname(__FILE__) + '/environment'
 module Weed
   class Application < Sinatra::Base
     disable :run, :reload
+    enable :logging
 
     # Load all the models here so we don't namespace conflict
     $LOAD_PATH.unshift("#{File.dirname(__FILE__)}/lib")
@@ -69,11 +70,52 @@ module Weed
     end
     
     get "/stats/all" do
-      Stats.all.to_json
+      if params[:bucket_ids]
+        bucket_ids = params[:bucket_ids].map &:to_i
+        all = Stats.connection.select_all <<-SQL
+          SELECT counter, created_at AS date
+          FROM   stats
+          ORDER BY created_at ASC
+  SQL
+      else
+        all = Stats.connection.select_all <<-SQL
+          SELECT counter, created_at AS date
+          FROM   stats
+          ORDER BY created_at ASC
+  SQL
+      end
+      all.to_json
+    end
+    
+    get "/stats/all/day" do
+      (0..60).map do |day|
+        date = Date.today - day
+        [date, Stats.by_day(date, {})]
+      end.to_json
+    end
+    
+    get "/stats/all/debug" do
+      erb :"stats/all"
+    end
+    
+    get "/stats/all/date/:date" do
+      date = Date.parse params[:date]
+      buckets = Weed::Stats.find :all, 
+        :conditions => ['cdate BETWEEN ? AND ?', date, date + 1.day], 
+        :joins => "left outer join buckets on buckets.id = stats.bucket_id",
+        :group => 'stats.bucket_id',
+        :select => 'buckets.name AS name, count(stats.id) AS counter'
+        
+      buckets.to_json
     end
     
     get "/stats/:bucket_id" do
       { :count => Stats.by_total({ :bucket_id => params[:bucket_id] }) }.to_json
+    end
+
+    get "/stats/:bucket_id/all" do
+      # todo: find with sql, don't instantiate
+      { :count => Stats.all(:conditions => { :bucket_id => params[:bucket_id] }).map { |s| [s.created_at, s.counter] } }.to_json
     end
     
     get "/stats/:bucket_id/day/:date" do # hmm. year/month/day?

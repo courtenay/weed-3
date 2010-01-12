@@ -1,0 +1,29 @@
+<table border="1">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Buckets</th>
+      <th>Total</th>
+      <th>Contents</th>
+    </tr>
+  </thead>
+<tbody>
+<% (1..90).each do |day| %>
+<tr>
+  <td>
+    <%= day.days.ago.strftime("%Y-%m-%d") %>
+  </td>
+  <td>
+  <% stats = Weed::Stats.find_by_day(day.days.ago, {})%>
+    <%= stats.size %>
+  </td>
+  <td>
+    <%= stats.sum(&:counter) %>
+  </td>
+  <td>
+    <%= stats.map { |s| s.bucket && "#{s.bucket.name}: #{s.counter}" }.compact.join(", ") %>
+  </td>
+</tr>
+<% end %>
+</tbody>
+</table>

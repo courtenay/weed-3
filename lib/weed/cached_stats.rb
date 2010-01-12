@@ -1,4 +1,5 @@
 class Weed::CachedStats < Weed::ActiveRecord::Base
+  belongs_to :bucket
   
   def self.override(args)
     # This is really just mongo's "$inc" function

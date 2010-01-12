@@ -23,6 +23,17 @@ class Weed::Stats < Weed::ActiveRecord::Base
   
   def self.by_day(date, conditions)
     date = Date.parse(date) if (date.is_a?(String))
+    Weed::CachedStats.with_scope(:find => {:conditions => conditions}) do
+      unless cached = Weed::CachedStats.first(:conditions => ['period = ? AND year = ? AND month = ? AND day = ?', 'day', date.year, date.month, date.day])
+        day = Weed::Stats.sum "counter", :conditions => ['cdate BETWEEN ? AND ?', date, date + 1.day]
+        Weed::CachedStats.override conditions.merge({:year => date.year, :month => date.month, :day => date.day, :period => 'day', :counter => day})
+        day
+      else
+        cached.counter
+      end
+    end
+      
+
     results = nil # ugh
     Weed::Stats.with_scope(:find => { :conditions => conditions }) do
       results = Weed::Stats.sum('counter', :conditions => ['(cdate BETWEEN ? AND ?)', date.to_datetime, date.to_datetime + 1.day])
@@ -31,6 +42,12 @@ class Weed::Stats < Weed::ActiveRecord::Base
     end
     results[0]
   end
+  
+  def self.find_by_day(date, conditions)
+    Weed::Stats.with_scope(:find => { :conditions => conditions }) do
+      Weed::Stats.find :all, :conditions => ['(cdate BETWEEN ? AND ?)', date.to_datetime, date.to_datetime + 1.day]
+    end
+  end
 
   def self.by_month(year, month, conditions)
     Weed::CachedStats.with_scope(:find => {:conditions => conditions }) do
@@ -38,7 +55,7 @@ class Weed::Stats < Weed::ActiveRecord::Base
         days = Weed::CachedStats.count(:conditions => ['period = ? AND year = ? AND month = ?', 'day', year, month])
         today = Date.today
         max = (month == today.month && year == today.year) ? today.day : Time.days_in_month(month)
-        if count < max
+        if days < max
           # not enough stats for the observed month, please regenerate them
           (1..max).each do |day|
             by_day(Date.new(year, month, day), conditions)
@@ -47,7 +64,7 @@ class Weed::Stats < Weed::ActiveRecord::Base
         days = Weed::CachedStats.sum('counter', :conditions => ['(period = ? AND year = ? AND month = ?)', 'day', year, month])
         # cache the year
         # Weed::CachedStats.override :year => year, :period => 'year', :counter => days
-        Weed::CachedStats.override(conditions.merge({:year => year, :month => 'month', :period => 'month', :counter => days}))
+        Weed::CachedStats.override(conditions.merge({:year => year, :month => month, :period => 'month', :counter => days}))
         days
       else
         cached.counter 
