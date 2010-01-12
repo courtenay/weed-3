@@ -23,10 +23,12 @@ class Weed::Stats < Weed::ActiveRecord::Base
   
   def self.by_day(date, conditions)
     date = Date.parse(date) if (date.is_a?(String))
-    Weed::CachedStats.with_scope(:find => {:conditions => conditions}) do
+    # nil bucket_id means ANY bucket_id, but that's only relevant on creating cached records
+    cached_conditions = { :bucket_id => nil }.merge(conditions)
+    Weed::CachedStats.with_scope(:find => {:conditions => cached_conditions}) do
       unless cached = Weed::CachedStats.first(:conditions => ['period = ? AND year = ? AND month = ? AND day = ?', 'day', date.year, date.month, date.day])
         day = Weed::Stats.with_scope(:find => { :conditions => conditions }) do
-          Weed::Stats.sum "counter", :conditions => ['cdate BETWEEN ? AND ?', date, date + 1.day]
+          Weed::Stats.sum "counter", :conditions => ['cdate >= ? AND cdate < ?', date.beginning_of_day, (date + 1).beginning_of_day]
         end
       # day = results.is_a?(Hash) ? results.values : [results] # maybe not needed?
         Weed::CachedStats.override conditions.merge({:year => date.year, :month => date.month, :day => date.day, :period => 'day', :counter => day})
@@ -44,7 +46,9 @@ class Weed::Stats < Weed::ActiveRecord::Base
   end
 
   def self.by_month(year, month, conditions)
-    Weed::CachedStats.with_scope(:find => {:conditions => conditions }) do
+    # nil bucket_id means ANY bucket_id, but that's only relevant on creating cached records
+    cached_conditions = { :bucket_id => nil }.merge(conditions)
+    Weed::CachedStats.with_scope(:find => {:conditions => cached_conditions }) do
       unless cached = Weed::CachedStats.first(:conditions => ['period = ? AND year = ? AND month = ?', 'month', year, month])
         days = Weed::CachedStats.count(:conditions => ['period = ? AND year = ? AND month = ?', 'day', year, month])
         today = Date.today
@@ -67,7 +71,9 @@ class Weed::Stats < Weed::ActiveRecord::Base
   end
   
   def self.by_year(year, conditions)
-    Weed::CachedStats.with_scope(:find => {:conditions => conditions }) do
+    # nil bucket_id means ANY bucket_id, but that's only relevant on creating cached records
+    cached_conditions = { :bucket_id => nil }.merge(conditions)
+    Weed::CachedStats.with_scope(:find => {:conditions => cached_conditions }) do
       unless cached = Weed::CachedStats.first(:conditions => ['period = ? AND year = ?', 'year', year])
         # not found, generate from months
         max = (year == Date.today.year) ? Date.today.month : 12
@@ -86,7 +92,9 @@ class Weed::Stats < Weed::ActiveRecord::Base
   end
   
   def self.by_total(conditions)
-    Weed::CachedStats.with_scope(:find => {:conditions => conditions}) do
+    # nil bucket_id means ANY bucket_id, but that's only relevant on creating cached records
+    cached_conditions = { :bucket_id => nil }.merge(conditions)
+    Weed::CachedStats.with_scope(:find => {:conditions => cached_conditions }) do
       unless cached = Weed::CachedStats.first(:conditions => ['period = ?', 'total'])
         # regenerate total
         # first find the full range of stats
@@ -107,3 +115,4 @@ class Weed::Stats < Weed::ActiveRecord::Base
     end
   end
 end
+# todo: cleanup the cached_conditions thing and DRY it

@@ -89,6 +89,21 @@ if you do a sum of the year's dates, it will calculate the sum of the month's da
 This part of the app is transparent to users.
 
 
+note: this is fast only if there are existing records in the db, not on a fresh db
+so it's up to you to keep the caches hot!
+
+
+
+====================
+
+todo: the stats_test takes too long because of by_total and is failing
+todo: by_total / by_year / by_month -- maybe should run a count on the db if records are missing?
+  rather than counting the subrecords
+todo: assume no data is missing? (i.e. data is corrupted, regenerate indexes to run aggregates!)
+
+
+
+====================
 
 
 

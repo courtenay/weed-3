@@ -104,7 +104,7 @@ class ApplicationTest < ActiveSupport::TestCase
     Weed::CachedStats.delete_all # wtf
     Weed::Stats.delete_all # wtf
 
-    post "/import/6", :data => ["2009-12-5", "2009-12-5", "2009-12-5", "2009-12-6", "2009-12-18"]
+    post "/import/6", :data => ["2009-12-5 12:55", "2009-12-5 13:25", "2009-12-5 14:56", "2009-12-6 00:02", "2009-12-18"]
     assert last_response.ok?
     assert_equal({:state=>"success", "imported"=>5}.to_json, last_response.body)
     
