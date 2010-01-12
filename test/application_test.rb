@@ -23,6 +23,13 @@ class ApplicationTest < ActiveSupport::TestCase
     assert_equal 0, last_response.content_length
   end
   
+  it "creates a bucket" do
+    post "/buckets", :name => "foo-bar"
+    assert last_response.ok?
+    bucket = Weed::Bucket.find_by_name("foo-bar")
+    assert_equal bucket.id.to_s, last_response.body
+  end
+
   # only supports 'name' right now
   it "records stats with params describing a bucket" do
     Weed::Bucket.delete_all
@@ -91,5 +98,17 @@ class ApplicationTest < ActiveSupport::TestCase
 
     get "/stats/5/week/#{Date.today.year}/#{Date.today.month}/#{Date.today.day}/daily"
     assert_equal "[0,0,0,0,0,1,2]", last_response.body
+  end
+
+  it "imports data" do
+    Weed::CachedStats.delete_all # wtf
+    Weed::Stats.delete_all # wtf
+
+    post "/import/6", :data => ["2009-12-5", "2009-12-5", "2009-12-5", "2009-12-6", "2009-12-18"]
+    assert last_response.ok?
+    assert_equal({:state=>"success", "imported"=>5}.to_json, last_response.body)
+    
+    get "/stats/6/day/2009-12-5"
+    assert_equal({"count" => 4}.to_json, last_response.body)
   end
 end

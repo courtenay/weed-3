@@ -36,12 +36,27 @@ module Weed
       # ok
     end
     
+    post '/import/:bucket_id' do
+      # todo: csv?
+      counter = 0
+      # todo: move to model/class method?
+      params[:data].each do |date|
+        Stats.hit! "cdate" => date, "bucket_id" => params[:bucket_id]
+        counter += 1
+      end
+      { "state" => "success", "imported" => counter }.to_json
+    end
+
     # todo: auth
-    
     
     get '/buckets/:name' do
       bucket = Bucket.find_by_name params[:name]
       {"bucket" => { "id" => bucket.id, "counter" => bucket.counter }}.to_json
+    end
+    
+    post "/buckets" do
+      bucket = Bucket.find_or_create_by_name params[:name]
+      bucket.id.to_s
     end
 
     # todo: get /stats/1/day/2009-12-5
