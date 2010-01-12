@@ -18,6 +18,8 @@ class CreateStats < Weed::ActiveRecord::Migration
     create_table :buckets do |f|
       f.string :name
       f.timestamps
+      f.index :name
     end
+    
   end
 end

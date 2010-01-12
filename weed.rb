@@ -37,6 +37,12 @@ module Weed
     end
     
     # todo: auth
+    
+    
+    get '/buckets/:name' do
+      bucket = Bucket.find_by_name params[:name]
+      {"bucket" => { "id" => bucket.id, "counter" => bucket.counter }}.to_json
+    end
 
     # todo: get /stats/1/day/2009-12-5
     # todo: get /stats/14/month/2009-12

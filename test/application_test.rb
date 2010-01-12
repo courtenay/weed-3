@@ -23,6 +23,7 @@ class ApplicationTest < ActiveSupport::TestCase
     assert_equal 0, last_response.content_length
   end
   
+  # only supports 'name' right now
   it "records stats with params describing a bucket" do
     Weed::Bucket.delete_all
 
@@ -31,6 +32,13 @@ class ApplicationTest < ActiveSupport::TestCase
     assert_equal 0, last_response.content_length
     assert_equal 1, Weed::Bucket.count
     assert_equal 1, Weed::Bucket.last.counter
+  end
+  
+  it "finds bucket id based on name" do
+    bucket = Weed::Bucket.create! :name => "bananas"
+    get '/buckets/bananas'
+    assert last_response.ok?
+    assert_equal({"bucket" => { "id" => bucket.id, "counter" => nil }}.to_json, last_response.body)
   end
   
   it "shows stats" do
