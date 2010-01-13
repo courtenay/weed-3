@@ -15,6 +15,9 @@ This library aims to solve this problem well enough for the average web
 application to use in daily analytics activities by utilizing some data 
 warehousing concepts and smart caching.
 
+It's still very much in pre-alpha (aka 'fun' mode), so don't trust your
+data in it. Please send tested patches if you find bugs.
+
 Installation
 ------------
 Weed3 is built on Sinatra, a simple ruby web framework, the installation
