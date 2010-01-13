@@ -20,10 +20,9 @@ module Weed
     end
 
     # Record a hit with
-    #   { :q => { :bucket_id => 2 }}
-    # 
+    #   { :q => { :bucket_id => 2 }} if you know the bucket id
+    #   { :q => { :name => "hits-main" }} to create the bucket or just use its name
     post "/record" do
-      # valid bucket params are :name
       if params[:q][:bucket_id]
         bucket_id = params[:q][:bucket_id]
       elsif params[:q][:name]
@@ -37,8 +36,6 @@ module Weed
       # ok
     end
     
-    # todo: import tuples like
-    #   [bucket_id, date], [bucket_id, date]
     post '/import/:bucket_id' do
       # todo: csv?
       counter = 0
@@ -49,6 +46,20 @@ module Weed
       end
       { "state" => "success", "imported" => counter }.to_json
     end
+
+    # import tuples like
+    #   :data => ["bucket_id, date", "bucket_id, date"]
+    post '/import' do
+      # todo: accept json or csv?
+      counter = 0
+      params[:data].each do |data|
+        bucket_id,date = data.split(",")
+        Stats.hit! "cdate" => date, "bucket_id" => bucket_id
+        counter += 1
+      end
+      { "state" => "success", "imported" => counter }.to_json
+    end
+    
 
     # todo: auth
     

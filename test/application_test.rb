@@ -100,16 +100,34 @@ class ApplicationTest < ActiveSupport::TestCase
     assert_equal "[0,0,0,0,0,1,2]", last_response.body
   end
 
-  it "imports data" do
-    Weed::CachedStats.delete_all # wtf
-    Weed::Stats.delete_all # wtf
-
+  it "imports data for a bucket" do
     post "/import/6", :data => ["2009-12-5 12:55", "2009-12-5 13:25", "2009-12-5 14:56", "2009-12-6 00:02", "2009-12-18"]
     assert last_response.ok?
     assert_equal({:state=>"success", "imported"=>5}.to_json, last_response.body)
     
     get "/stats/6/day/2009-12-5"
     assert_equal({"count" => 3}.to_json, last_response.body)
+  end
+  
+  # todo: how to do this with params?!
+  it "imports data with tuples" do
+    Weed::CachedStats.delete_all # wtf
+    Weed::Stats.delete_all # wtf
+    post "/import", :data => \
+      [ "6,2009-12-5 12:55", 
+        "6,2009-12-5 13:25", 
+        "7,2009-12-5 14:56", 
+        "7,2009-12-6 00:02", 
+        "7,2009-12-18"]
+    
+    assert last_response.ok?
+    assert_equal({:state=>"success", "imported"=>5}.to_json, last_response.body)
+    
+    get "/stats/6/day/2009-12-5"
+    assert_equal({"count" => 2}.to_json, last_response.body)
+
+    get "/stats/7/day/2009-12-5"
+    assert_equal({"count" => 1}.to_json, last_response.body)
   end
   
   it "imports data, clearing existing values" do
