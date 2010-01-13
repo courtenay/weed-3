@@ -74,6 +74,17 @@ Weed attempts to be a good RESTful citizen, so, send a hit with a POST
     [0,0,0,1,0,0,0]
 
     For more information (there are more things you can do) see the 'weed.rb' file.
+    
+    # todo: flesh this out
+    
+You can also get trends back from it if you ask; like, this number has dropped to 50%
+of last month's number (-50). I think the logic is wrong on this at the moment.
+
+    #  {"date": [count, percent_from_previous_month]}
+    #
+    $ curl http://localhost:4567/trends/10/2009/1/monthly
+    {"2009-12":[25,-50]},{"2009-11":[50,100]},{"2009-10":[0,null]}
+    
 
 How it works
 ------------
