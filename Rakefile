@@ -16,7 +16,6 @@ namespace :db do
   task(:migrate => :environment) do
     module Weed
       Weed::ActiveRecord::Base.logger = Logger.new(STDOUT)
-      Weed::ActiveRecord::Base.log_level = :debug
       ActiveRecord::Migration.verbose = true
       Weed::ActiveRecord::Migrator.migrate("db/migrate/weed")
     end
