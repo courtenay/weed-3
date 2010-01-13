@@ -53,7 +53,7 @@ class Weed::Stats < Weed::ActiveRecord::Base
       previous_month = this_month - 2 # go back a day
       previous = by_month(previous_month.year, previous_month.month, conditions)
     end
-    result = Weed::CachedStats.with_scope(:find => {:conditions => cached_conditions }) do
+    Weed::CachedStats.with_scope(:find => {:conditions => cached_conditions }) do
       unless cached = Weed::CachedStats.first(:conditions => ['period = ? AND year = ? AND month = ?', 'month', year, month])
         days = Weed::CachedStats.count(:conditions => ['period = ? AND year = ? AND month = ?', 'day', year, month])
         today = Date.today
@@ -67,18 +67,30 @@ class Weed::Stats < Weed::ActiveRecord::Base
         days = Weed::CachedStats.sum('counter', :conditions => ['(period = ? AND year = ? AND month = ?)', 'day', year, month])
         # cache the year
         # Weed::CachedStats.override :year => year, :period => 'year', :counter => days
-        Weed::CachedStats.override(conditions.merge({:year => year, :month => month, :period => 'month', :counter => days}))
-        days
+
+
+        if flags && flags == :trend || flags.include?(:trend)
+          if previous > 0
+            trend = ((days - previous) * 100 / previous) # %
+          else
+            trend = 0
+          end
+          Weed::CachedStats.override(conditions.merge({:year => year, :month => month, :period => 'month', :counter => days, :trend => trend}))
+          [days, trend]
+
+        else
+          # ugh same query
+          Weed::CachedStats.override(conditions.merge({:year => year, :month => month, :period => 'month', :counter => days}))
+          days
+        end
+
       else
-        cached.counter 
+        if flags && flags == :trend || flags.include?(:trend)
+          [cached.counter, cached.trend]
+        else
+          cached.counter 
+        end
       end
-    end
-    if flags && flags == :trend || flags.include?(:trend)
-      delta = result - previous
-      [result, previous, "#{(delta * 100 / previous)}%"]
-      # todo: store this in the CachedStats model so we don't have to calc it each time
-    else
-      result
     end
   end
   

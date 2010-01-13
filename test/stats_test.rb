@@ -65,7 +65,7 @@ class StatsTest < ActiveSupport::TestCase
       2.times { Weed::Stats.hit!({ :bucket_id => 15, :cdate => date }) }
     
       stats = Weed::Stats.by_month date.year, date.month, { :bucket_id => 15 }, :trend
-      assert_equal [2, 2, '0%'], stats
+      assert_equal [2, nil], stats
     end
     
     it "shows a rising trend" do
@@ -74,7 +74,7 @@ class StatsTest < ActiveSupport::TestCase
       3.times { Weed::Stats.hit!({ :bucket_id => 125, :cdate => date }) }
     
       stats = Weed::Stats.by_month date.year, date.month, { :bucket_id => 125 }, :trend
-      assert_equal [3, 2, '50%'], stats
+      assert_equal [3, 50], stats
     end
     
     it "shows a falling trend" do
@@ -83,7 +83,7 @@ class StatsTest < ActiveSupport::TestCase
       2.times { Weed::Stats.hit!({ :bucket_id => 135, :cdate => date }) }
     
       stats = Weed::Stats.by_month date.year, date.month, { :bucket_id => 135 }, :trend
-      assert_equal [2, 4, '-50%'], stats
+      assert_equal [2, -50], stats
     end
   end
   

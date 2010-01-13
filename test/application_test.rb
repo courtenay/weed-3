@@ -100,6 +100,26 @@ class ApplicationTest < ActiveSupport::TestCase
     assert_equal "[0,0,0,0,0,1,2]", last_response.body
   end
 
+  # This slows the tests down by 3s. ugh.
+  it "shows trends per day for a week" do
+    Weed::Stats.hit! :cdate => 37.days.ago, :bucket_id => 59
+    Weed::Stats.hit! :cdate => 36.days.ago, :bucket_id => 59
+    Weed::Stats.hit! :cdate => 36.days.ago, :bucket_id => 59
+    Weed::Stats.hit! :cdate => 5.days.ago, :bucket_id => 59
+
+    get "/trends/59/week/#{Date.today.year}/#{Date.today.month}/monthly"
+    data = JSON.parse last_response.body
+    { "2009-8"  => [0,nil],
+      "2009-9"  => [0,nil],
+      "2009-10" => [0,nil],
+      "2009-11" => [0,nil],
+      "2009-12" => [3,nil],
+      "2010-1"  => [1,-67],
+    }.each do |key,value|
+      assert_equal value, data[key], "Unexpected result for #{key}: #{value}"
+    end
+  end
+
   it "imports data for a bucket" do
     post "/import/6", :data => ["2009-12-5 12:55", "2009-12-5 13:25", "2009-12-5 14:56", "2009-12-6 00:02", "2009-12-18"]
     assert last_response.ok?

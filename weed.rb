@@ -143,6 +143,17 @@ module Weed
         Stats.by_day((date - day).to_date, { :bucket_id => params[:bucket_id] })
       end.to_json
     end
+
+    get "/trends/:bucket_id/week/:year/:month/monthly" do
+      date = Date.new(params[:year].to_i, params[:month].to_i, 1)
+      # todo: i bet we could store this string in the month's data like [1,25,365,126] etc
+      (0..6).inject({}) do |hash,current|
+        hash["#{date.year}-#{date.month}"] = \
+          Stats.by_month(date.year, date.month, { :bucket_id => params[:bucket_id] }, :trend)
+        date = (date - 2).beginning_of_month # reliably go back a month
+        hash
+      end.to_json
+    end
     
   end
 end
