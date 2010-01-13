@@ -57,6 +57,36 @@ class StatsTest < ActiveSupport::TestCase
     assert_equal 0, Weed::CachedStats.sum('counter', :conditions => { :year => date.year, :period => "year", :bucket_id => 13 })
   end
   
+  context "with trends" do
+    it "gives a trend" do
+      date = Date.new(2010, 1, 4)
+      2.times { Weed::Stats.hit!({ :bucket_id => 15, :cdate => date - 40}) }
+      2.times { Weed::Stats.hit!({ :bucket_id => 15, :cdate => date - 20}) }
+      2.times { Weed::Stats.hit!({ :bucket_id => 15, :cdate => date }) }
+    
+      stats = Weed::Stats.by_month date.year, date.month, { :bucket_id => 15 }, :trend
+      assert_equal [2, 2, '0%'], stats
+    end
+    
+    it "shows a rising trend" do
+      date = Date.new(2010, 1, 4)
+      2.times { Weed::Stats.hit!({ :bucket_id => 125, :cdate => date - 20}) }
+      3.times { Weed::Stats.hit!({ :bucket_id => 125, :cdate => date }) }
+    
+      stats = Weed::Stats.by_month date.year, date.month, { :bucket_id => 125 }, :trend
+      assert_equal [3, 2, '50%'], stats
+    end
+    
+    it "shows a falling trend" do
+      date = Date.new(2010, 1, 4)
+      4.times { Weed::Stats.hit!({ :bucket_id => 135, :cdate => date - 20}) }
+      2.times { Weed::Stats.hit!({ :bucket_id => 135, :cdate => date }) }
+    
+      stats = Weed::Stats.by_month date.year, date.month, { :bucket_id => 135 }, :trend
+      assert_equal [2, 4, '-50%'], stats
+    end
+  end
+  
   # this is slow as fuck
   # it "calculates total results" do
   #   # provide a range of year data

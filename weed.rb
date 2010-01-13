@@ -59,7 +59,6 @@ module Weed
       end
       { "state" => "success", "imported" => counter }.to_json
     end
-    
 
     # todo: auth
     

@@ -45,10 +45,15 @@ class Weed::Stats < Weed::ActiveRecord::Base
     end
   end
 
-  def self.by_month(year, month, conditions)
+  def self.by_month(year, month, conditions, flags = [])
     # nil bucket_id means ANY bucket_id, but that's only relevant on creating cached records
     cached_conditions = { :bucket_id => nil }.merge(conditions)
-    Weed::CachedStats.with_scope(:find => {:conditions => cached_conditions }) do
+    if flags && flags == :trend || flags.include?(:trend)
+      this_month = Date.new year, month, 1
+      previous_month = this_month - 2 # go back a day
+      previous = by_month(previous_month.year, previous_month.month, conditions)
+    end
+    result = Weed::CachedStats.with_scope(:find => {:conditions => cached_conditions }) do
       unless cached = Weed::CachedStats.first(:conditions => ['period = ? AND year = ? AND month = ?', 'month', year, month])
         days = Weed::CachedStats.count(:conditions => ['period = ? AND year = ? AND month = ?', 'day', year, month])
         today = Date.today
@@ -67,6 +72,13 @@ class Weed::Stats < Weed::ActiveRecord::Base
       else
         cached.counter 
       end
+    end
+    if flags && flags == :trend || flags.include?(:trend)
+      delta = result - previous
+      [result, previous, "#{(delta * 100 / previous)}%"]
+      # todo: store this in the CachedStats model so we don't have to calc it each time
+    else
+      result
     end
   end
   
