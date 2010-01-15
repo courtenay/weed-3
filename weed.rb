@@ -12,12 +12,14 @@ module Weed
        :database =>  File.dirname(__FILE__) + "/db/weed3.development.sqlite3.db"
       }
       Weed::ActiveRecord::Base.establish_connection(Weed::ActiveRecord::Base.connection_args)
+      Weed::ActiveRecord::Base.logger = Logger.new "log/development.log"
     end
     configure :test do
       Weed::ActiveRecord::Base.connection_args = {  :adapter => 'sqlite3',
        :database =>  File.dirname(__FILE__) + "/db/weed3.test.sqlite3.db"
       }
       Weed::ActiveRecord::Base.establish_connection(Weed::ActiveRecord::Base.connection_args)
+      Weed::ActiveRecord::Base.logger = Logger.new "log/test.log"
     end
     
     Weed::ActiveRecord::Base.establish_connection(Weed::ActiveRecord::Base.connection_args)
@@ -212,20 +214,20 @@ module Weed
       bucket = Bucket.find params[:bucket_id]
       date = Date.new(params[:year].to_i, params[:month].to_i, 1)
       if bucket.children.empty?
-        (0..30).map do |day|
-          Stats.by_day((date + day), { :bucket_id => params[:bucket_id] })
-        end.to_json
+        Stats.by_day_range(date, date + 30, { :bucket_id => params[:bucket_id]}).to_json
+        #(0..30).map do |day|
+        #  Stats.by_day((date + day), { :bucket_id => params[:bucket_id] })
+        #end.to_json
       else
-        data = (0..30).map do |day|
-          Stats.by_day((date + day), { :bucket_id => params[:bucket_id] })
-        end
+        data = Stats.by_day_range(date, date + 30, { :bucket_id => params[:bucket_id]})
         [{
           "bucket"   => {"name" => bucket.name, "id" => bucket.id},
           "data"     => data,
           "children" => bucket.children.map do |child|
-             data = (0..30).map do |day|
-               Stats.by_day((date + day), { :bucket_id => child.id })
-             end
+            data = Stats.by_day_range(date, date+30, { :bucket_id => child.id })
+             #data = (0..30).map do |day|
+             #  Stats.by_day((date + day), { :bucket_id => child.id })
+             #end
              {
                "bucket" => {"name" => child.name, "id" => child.id},
                 "data"   => data

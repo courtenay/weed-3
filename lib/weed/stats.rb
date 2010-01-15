@@ -45,6 +45,29 @@ class Weed::Stats < Weed::ActiveRecord::Base
       end
     end
   end
+
+  # Same as 'by_day' but if you want multiple numbers
+  def self.by_day_range(start_date, end_date, conditions)
+    Weed::CachedStats.with_scope(:find => {:conditions => conditions}) do
+      if start_date.month == end_date.month 
+        cached = Weed::CachedStats.find(:all, 
+          :conditions => ['period = ? AND (year = ? AND month = ? AND day >= ? AND day <= ?)',
+            'day', start_date.year, end_date.month, start_date.day, end_date.day]
+        )
+      else
+        cached = Weed::CachedStats.find(:all, 
+          :conditions => ['period = ? AND (year >= ? AND month >= ? AND day >= ?) AND (year <= ? AND month <= ? AND day <= ?)', 'day', start_date.year, start_date.month, start_date.day, end_date.year, end_date.month, end_date.day]
+        )
+      end
+      if cached.size == (end_date - start_date + 1)
+        # we have all the numbers here hopefully not too many
+        cached.map &:counter
+      else
+        raise "Missing Cached Stats #todo expected #{end_date-start_date} but saw #{cached.size}"
+        # should probably call by_day(start_date) on each missing day
+      end
+    end
+  end
   
   def self.find_by_day(date, conditions)
     Weed::Stats.with_scope(:find => { :conditions => conditions }) do
@@ -68,7 +91,7 @@ class Weed::Stats < Weed::ActiveRecord::Base
     end
     Weed::CachedStats.with_scope(:find => {:conditions => cached_conditions }) do
       # caching doesn't work right now
-      #unless cached = Weed::CachedStats.first(:conditions => ['period = ? AND year = ? AND month = ?', 'month', year, month])
+      unless cached = Weed::CachedStats.first(:conditions => ['period = ? AND year = ? AND month = ?', 'month', year, month])
         days = Weed::CachedStats.count(:conditions => ['period = ? AND year = ? AND month = ?', 'day', year, month])
         today = Date.today
         max = (month == today.month && year == today.year) ? today.day : Time.days_in_month(month)
@@ -100,9 +123,9 @@ class Weed::Stats < Weed::ActiveRecord::Base
         #else
           [days, trend]
         #end
-      # else 
-      #   [cached.counter, cached.trend]
-      # end
+      else 
+        [cached.counter, cached.trend]
+      end
     end
   end
   
