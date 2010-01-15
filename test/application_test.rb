@@ -63,40 +63,46 @@ class ApplicationTest < ActiveSupport::TestCase
   it "shows daily stats" do
     # Weed::CachedStats.delete_all # wtf
     Weed::Stats.delete_all # wtf
-    post '/record', { :q => { "bucket_id" => 3 }, :user => 'jimmy-5' }
-    get "/stats/3/day/#{Date.today.to_s}"
-    assert_equal({ :count => 1 }.to_json, last_response.body)
+    bucket = Weed::Bucket.create :name => "three"
+
+    post '/record', { :q => { "bucket_id" => bucket.id }, :user => 'jimmy-5' }
+    get "/stats/#{bucket.id}/#{Date.today.to_s}"
+    assert_equal({ "count" => 1, "bucket" => {"name" => "three", "parent_id" => nil} }, JSON.parse(last_response.body))
   end
   
   it "shows monthly stats" do
     Weed::CachedStats.delete_all # wtf
     Weed::Stats.delete_all # wtf
-
-    post '/record', { :q => { "bucket_id" => 3 }, :user => 'jimmy-5' }
-    get "/stats/3/month/#{Date.today.year}/#{Date.today.month}"
-    assert_equal({ :count => 1 }.to_json, last_response.body)
+    bucket = Weed::Bucket.create :name => "three"
+    
+    post '/record', { :q => { "bucket_id" => bucket.id }, :user => 'jimmy-5' }
+    get "/stats/#{bucket.id}/#{Date.today.year}/#{Date.today.month}"
+    assert_equal({ "count" => 1, "bucket" => {"name" => "three", "parent_id" => nil}}, JSON.parse(last_response.body))
   end
   
   it "shows total count with conditions" do
     Weed::CachedStats.delete_all # wtf
     Weed::Stats.delete_all # wtf
+    bucket3 = Weed::Bucket.create :name => "three"
+    bucket4 = Weed::Bucket.create :name => "four"
 
-    post '/record', { :q => { "bucket_id" => 4 }, :user => 'jimmy-5' }
-    post '/record', { :q => { "bucket_id" => 3 }, :user => 'jimmy-5' }
-    get "/stats/3"
-    assert_equal({ :count => 1 }.to_json, last_response.body)
+    post '/record', { :q => { "bucket_id" => bucket4.id }, :user => 'jimmy-5' }
+    post '/record', { :q => { "bucket_id" => bucket3.id }, :user => 'jimmy-5' }
+    get "/stats/#{bucket3.id}"
+    assert_equal({ "count" => 1, "bucket" => {"name" => "three", "parent_id" => nil} }, JSON.parse(last_response.body))
   end
 
   it "shows stats per day for a week" do
     Weed::CachedStats.delete_all # wtf
     Weed::Stats.delete_all # wtf
+    bucket5 = Weed::Bucket.create :name => "Update5"
+    
+    Weed::Stats.hit! :cdate => 7.days.ago, :bucket_id => bucket5.id
+    Weed::Stats.hit! :cdate => 6.days.ago, :bucket_id => bucket5.id
+    Weed::Stats.hit! :cdate => 6.days.ago, :bucket_id => bucket5.id
+    Weed::Stats.hit! :cdate => 5.days.ago, :bucket_id => bucket5.id
 
-    Weed::Stats.hit! :cdate => 7.days.ago, :bucket_id => 5
-    Weed::Stats.hit! :cdate => 6.days.ago, :bucket_id => 5
-    Weed::Stats.hit! :cdate => 6.days.ago, :bucket_id => 5
-    Weed::Stats.hit! :cdate => 5.days.ago, :bucket_id => 5
-
-    get "/stats/5/week/#{Date.today.year}/#{Date.today.month}/#{Date.today.day}/daily"
+    get "/stats/#{bucket5.id}/#{Date.today.year}/#{Date.today.month}/#{Date.today.day}/week"
     assert_equal "[0,0,0,0,0,1,2]", last_response.body
   end
 
@@ -121,33 +127,42 @@ class ApplicationTest < ActiveSupport::TestCase
   end
 
   it "imports data for a bucket" do
-    post "/import/6", :data => ["2009-12-5 12:55", "2009-12-5 13:25", "2009-12-5 14:56", "2009-12-6 00:02", "2009-12-18"]
+    bucket6 = Weed::Bucket.create :name => "import"
+
+    post "/import/#{bucket6.id}", :data => ["2009-12-5 12:55, 2009-12-5 13:25,2009-12-5 14:56,2009-12-6 00:02,2009-12-18"]
     assert last_response.ok?
-    assert_equal({:state=>"success", "imported"=>5}.to_json, last_response.body)
+    assert_equal({"state"=>"success", "imported"=>5}, JSON.parse(last_response.body))
     
-    get "/stats/6/day/2009-12-5"
-    assert_equal({"count" => 3}.to_json, last_response.body)
+    get "/stats/#{bucket6.id}/2009-12-5"
+    assert_equal({"count" => 3,  "bucket" => {"name" => "import", "parent_id" => nil}}, JSON.parse(last_response.body))
   end
   
   # todo: how to do this with params?!
   it "imports data with tuples" do
     Weed::CachedStats.delete_all # wtf
     Weed::Stats.delete_all # wtf
+    bucket6 = Weed::Bucket.create :name => "import"
+    bucket7 = Weed::Bucket.create :name => "outport"
+    
     post "/import", :data => \
-      [ "6,2009-12-5 12:55", 
-        "6,2009-12-5 13:25", 
-        "7,2009-12-5 14:56", 
-        "7,2009-12-6 00:02", 
-        "7,2009-12-18"]
+      [ "#{bucket6.id},2009-12-5 12:55",
+        "#{bucket6.id},2009-12-5 13:25", 
+        "#{bucket7.id},2009-12-5 14:56", 
+        "#{bucket7.id},2009-12-6 00:02", 
+        "#{bucket7.id},2009-12-18"]
     
     assert last_response.ok?
-    assert_equal({:state=>"success", "imported"=>5}.to_json, last_response.body)
+    assert_equal({"state"=>"success", "imported"=>5}, JSON.parse(last_response.body))
     
-    get "/stats/6/day/2009-12-5"
-    assert_equal({"count" => 2}.to_json, last_response.body)
+    get "/stats/#{bucket6.id}/2009-12-5"
+    assert_equal({"count" => 2, "bucket" => {"name" => "import", "parent_id" => nil}}, JSON.parse(last_response.body))
 
-    get "/stats/7/day/2009-12-5"
-    assert_equal({"count" => 1}.to_json, last_response.body)
+    get "/stats/#{bucket7.id}/2009-12-5"
+    assert_equal({"count" => 1, "bucket" => {"name" => "outport", "parent_id" => nil}}, JSON.parse(last_response.body))
+  end
+  
+  it "imports data with lists of dates" do
+    # todo
   end
   
   it "imports data, clearing existing values" do

@@ -34,6 +34,7 @@ module Weed
     # Record a hit with
     #   { :q => { :bucket_id => 2 }} if you know the bucket id
     #   { :q => { :name => "hits-main" }} to create the bucket or just use its name
+    #   { :q => { :bucket_id => 2, :fk => 4 }}
     post "/record" do
       if params[:q][:bucket_id]
         bucket_id = params[:q][:bucket_id]
@@ -43,17 +44,38 @@ module Weed
       else
         raise "Bad params (you can only send q[name] or q[bucket_id])"
       end
-      # todo: generate bucket id from params[:q]
-      Stats.hit! "cdate" => Time.now, "bucket_id" => bucket_id
+      if params[:q][:fk]
+        Stats.hit! "cdate" => Time.now, "bucket_id" => bucket_id, "foreign_key_id" => params[:q][:fk]
+      else
+        Stats.hit! "cdate" => Time.now, "bucket_id" => bucket_id
+      end
       # ok
     end
-    
+
+    # import data with :data => date,date,date
     post '/import/:bucket_id' do
       # todo: csv?
       counter = 0
       # todo: move to model/class method?
+      params[:data].each do |dates|
+        dates = dates.split(",")
+        dates.each do |date|
+          #$stderr.puts date.inspect
+          # date = Date.parse(date)
+          stat = Stats.hit! "cdate" => date, "bucket_id" => params[:bucket_id]
+          counter += 1
+        end
+      end
+      { "state" => "success", "imported" => counter }.to_json
+    end
+    
+    # todo: test
+    post "/import/:bucket_id/:fk_id" do
+      counter = 0
+      # todo: move to model/class method?
       params[:data].each do |date|
-        Stats.hit! "cdate" => date, "bucket_id" => params[:bucket_id]
+        # todo: delete all stats with fkid
+        Stats.hit! "cdate" => date, "bucket_id" => params[:bucket_id], "foreign_key_id" => params[:fk_id]
         counter += 1
       end
       { "state" => "success", "imported" => counter }.to_json
@@ -76,13 +98,21 @@ module Weed
     
     get '/buckets/:name' do
       bucket = Bucket.find_by_name params[:name]
-      {"bucket" => { "id" => bucket.id, "counter" => bucket.counter }}.to_json
+      {"bucket" => { "id" => bucket && bucket.id, "counter" => bucket && bucket.counter }}.to_json
     end
     
+    # todo: test
+    post "/buckets/:parent_id" do
+      bucket = Bucket.find params[:parent_id]
+      child = bucket.children.find_or_create_by_name params[:name]
+      child.id.to_s
+    end
+
     post "/buckets" do
       bucket = Bucket.find_or_create_by_name params[:name]
       bucket.id.to_s
     end
+    
 
     # todo: get /stats/1/day/2009-12-5
     # todo: get /stats/14/month/2009-12
@@ -95,15 +125,15 @@ module Weed
       if params[:bucket_ids]
         bucket_ids = params[:bucket_ids].map &:to_i
         all = Stats.connection.select_all <<-SQL
-          SELECT counter, created_at AS date
-          FROM   stats
-          ORDER BY created_at ASC
+          SELECT counter, cdate, buckets.name as name
+          FROM   stats left join buckets on buckets.id=stats.bucket_id
+          ORDER BY stats.cdate ASC
   SQL
       else
         all = Stats.connection.select_all <<-SQL
-          SELECT counter, created_at AS date
-          FROM   stats
-          ORDER BY created_at ASC
+          SELECT counter, cdate, buckets.name as name
+          FROM   stats left join buckets on buckets.id=stats.bucket_id
+          ORDER BY stats.cdate ASC
   SQL
       end
       all.to_json
@@ -132,23 +162,35 @@ module Weed
     end
     
     get "/stats/:bucket_id" do
-      { :count => Stats.by_total({ :bucket_id => params[:bucket_id] }) }.to_json
+      bucket = Bucket.find params[:bucket_id]
+      { :bucket => { :name => bucket.name, :parent_id => bucket.parent_id },
+        :count => Stats.by_total({ :bucket_id => params[:bucket_id] }) }.to_json
     end
 
     get "/stats/:bucket_id/all" do
+      bucket = Bucket.find params[:bucket_id]
       # todo: find with sql, don't instantiate
-      { :count => Stats.all(:conditions => { :bucket_id => params[:bucket_id] }).map { |s| [s.created_at, s.counter] } }.to_json
+      if bucket.children.any?
+        { :bucket => { :name => bucket.name, :parent_id => bucket.parent_id, :children => bucket.children_ids }}.to_json
+      else
+        { :bucket => { :name => bucket.name, :parent_id => bucket.parent_id },
+          :count => Stats.all(:conditions => { :bucket_id => params[:bucket_id] }).map { |s| [s.cdate, s.counter] } }.to_json
+      end
     end
     
-    get "/stats/:bucket_id/day/:date" do # hmm. year/month/day?
-      { :count => Stats.by_day(params[:date], { :bucket_id => params[:bucket_id] }) }.to_json
+    get "/stats/:bucket_id/:date" do # hmm. year/month/day?
+      bucket = Bucket.find params[:bucket_id]
+      { :bucket => { :name => bucket.name, :parent_id => bucket.parent_id },
+        :count => Stats.by_day(params[:date], { :bucket_id => params[:bucket_id] }) }.to_json
     end
 
-    get "/stats/:bucket_id/month/:year/:month" do
-      { :count => Stats.by_month(params[:year].to_i, params[:month].to_i, { :bucket_id => params[:bucket_id].to_i }) }.to_json
+    get "/stats/:bucket_id/:year/:month" do
+      bucket = Bucket.find params[:bucket_id]
+      { :bucket => { :name => bucket.name, :parent_id => bucket.parent_id },
+        :count => Stats.by_month(params[:year].to_i, params[:month].to_i, { :bucket_id => params[:bucket_id].to_i }) }.to_json
     end
 
-    get "/stats/:bucket_id/week/:year/:month/:day/daily" do
+    get "/stats/:bucket_id/:year/:month/:day/week" do
       date = Date.new(params[:year].to_i, params[:month].to_i, params[:day].to_i)
       # todo: i bet we could store this string in the month's data like [1,25,365,126] etc
       (0..6).map do |day|
