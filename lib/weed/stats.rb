@@ -48,7 +48,11 @@ class Weed::Stats < Weed::ActiveRecord::Base
 
   # Same as 'by_day' but if you want multiple numbers
   def self.by_day_range(start_date, end_date, conditions)
-    Weed::CachedStats.with_scope(:find => {:conditions => conditions}) do
+    if blob = Weed::CachedBlob.find(:first, :conditions => conditions.merge({:start_date => start_date, :end_date => end_date}))
+      # todo: if conditions[:end_date] > end_date then just truncate the string?
+      return blob.counters
+    end
+    results = Weed::CachedStats.with_scope(:find => {:conditions => conditions}) do
       if start_date.month == end_date.month 
         cached = Weed::CachedStats.find(:all, 
           :conditions => ['period = ? AND (year = ? AND month = ? AND day >= ? AND day <= ?)',
@@ -59,14 +63,27 @@ class Weed::Stats < Weed::ActiveRecord::Base
           :conditions => ['period = ? AND (year >= ? AND month >= ? AND day >= ?) AND (year <= ? AND month <= ? AND day <= ?)', 'day', start_date.year, start_date.month, start_date.day, end_date.year, end_date.month, end_date.day]
         )
       end
-      if cached.size == (end_date - start_date + 1)
+      if cached.size >= (end_date - start_date)
         # we have all the numbers here hopefully not too many
         cached.map &:counter
       else
-        raise "Missing Cached Stats #todo expected #{end_date-start_date} but saw #{cached.size}"
+        date = start_date
+        while (date < end_date)
+          if !cached.any? { |c| c.day == date.day }
+            cached << by_day(date, conditions)
+          end
+          date += 1
+        end
+        # hopefully this doesn't cause an infinite loop!
+        return by_day_range(start_date, end_date, conditions)
+        # raise "Missing Cached Stats #todo expected #{end_date-start_date} but saw #{cached.size}"
         # should probably call by_day(start_date) on each missing day
       end
     end
+    Weed::CachedBlob.create(conditions.merge({ :start_date => start_date,
+      :end_date   => end_date,
+      :counters   => results.join(",") }))
+    results
   end
   
   def self.find_by_day(date, conditions)
