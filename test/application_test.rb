@@ -117,7 +117,46 @@ class ApplicationTest < ActiveSupport::TestCase
     Weed::Stats.hit! :cdate => 5.days.ago, :bucket_id => bucket5.id
 
     get "/stats/#{bucket5.id}/#{Date.today.year}/#{Date.today.month}/month"
-    assert_equal "[0,0,0,0,0,0,0,1,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]", last_response.body
+    assert_equal [0,0,0,0,0,0,0,1,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], JSON.parse(last_response.body)
+  end
+  
+  it "shows stats per day for all child nodes for a week" do
+    Weed::Stats.delete_all
+    Weed::CachedStats.delete_all
+    bucket_parent = Weed::Bucket.create :name => "tender-500"
+    bucketm = Weed::Bucket.create :name => "monkey",   :parent => bucket_parent
+    bucketc = Weed::Bucket.create :name => "cucumber", :parent => bucket_parent
+    
+    Weed::Stats.hit! :cdate => 7.days.ago, :bucket_id => bucketm.id
+    Weed::Stats.hit! :cdate => 6.days.ago, :bucket_id => bucketm.id
+    Weed::Stats.hit! :cdate => 6.days.ago, :bucket_id => bucketc.id
+    Weed::Stats.hit! :cdate => 5.days.ago, :bucket_id => bucketc.id
+    Weed::Stats.hit! :cdate => 5.days.ago, :bucket_id => bucketc.id
+    
+    get "/stats/#{bucket_parent.id}/#{Date.today.year}/#{Date.today.month}/month"
+    expected = [
+      {'bucket' => {'name' => 'tender-500', 'id' => bucket_parent.id },
+       'data' => [0,0,0,0,0,0,0,1,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+       'children' => [
+         {
+           'bucket' => {'name' => 'monkey', 'id' => bucketm.id},
+           'data' => [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+         },
+         {
+           'bucket' => {'name' => 'cucumber', 'id' => bucketc.id},
+           'data' => [0,0,0,0,0,0,0,0,1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+         }
+       ]
+      }
+    ]
+    output = JSON.parse(last_response.body)
+    assert_equal expected.size, output.size
+    expected.each_with_index do |arr,i|
+      arr.keys.each do |k|  
+        assert_equal arr[k], output[i][k], "Key #{k} was not equal for #{i}"
+      end
+    end
+    assert_equal expected, output
   end
 
   # This slows the tests down by 3s. ugh.

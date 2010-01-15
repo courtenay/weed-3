@@ -209,10 +209,30 @@ module Weed
 
     #   "/stats/#{bucket5.id}/#{Date.today.year}/#{Date.today.month}/month"
     get "/stats/:bucket_id/:year/:month/month" do
+      bucket = Bucket.find params[:bucket_id]
       date = Date.new(params[:year].to_i, params[:month].to_i, 1)
-      (0..30).map do |day|
-        Stats.by_day((date + day), { :bucket_id => params[:bucket_id] })
-      end.to_json
+      if bucket.children.empty?
+        (0..30).map do |day|
+          Stats.by_day((date + day), { :bucket_id => params[:bucket_id] })
+        end.to_json
+      else
+        data = (0..30).map do |day|
+          Stats.by_day((date + day), { :bucket_id => params[:bucket_id] })
+        end
+        [{
+          "bucket"   => {"name" => bucket.name, "id" => bucket.id},
+          "data"     => data,
+          "children" => bucket.children.map do |child|
+             data = (0..30).map do |day|
+               Stats.by_day((date + day), { :bucket_id => child.id })
+             end
+             {
+               "bucket" => {"name" => child.name, "id" => child.id},
+                "data"   => data
+             }
+           end
+        }].to_json
+      end
     end
 
     get "/trends/:bucket_id/week/:year/:month/monthly" do
