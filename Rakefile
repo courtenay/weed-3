@@ -14,8 +14,7 @@ end
 namespace :db do
   desc "Migrate the database"
   task(:migrate => :environment) do
-    RACK_ENV = :development unless defined?RACK_ENV
-    $stderr.puts "x #{RACK_ENV}"
+    RACK_ENV = ENV['RACK_ENV'] || :development unless defined?(RACK_ENV)
     
     Weed::ActiveRecord::Base.connection_args = {  :adapter => 'sqlite3',
      :database =>  File.dirname(__FILE__) + "/db/weed3.#{RACK_ENV}.sqlite3.db"
