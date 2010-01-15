@@ -32,8 +32,8 @@ class StatsTest < ActiveSupport::TestCase
     
     2.times { Weed::Stats.hit!({ :bucket_id => 13, :cdate => Date.today - 35.days}) }
     2.times { Weed::Stats.hit!({ :bucket_id => 13, :cdate => Date.today }) }
-    assert_equal 2, Weed::Stats.by_month(Date.today.year, Date.today.month, { :bucket_id => 13 })
-    assert_equal 2, Weed::Stats.by_month(Date.today.year, Date.today.month, {}) # no conditions
+    assert_equal [2,0], Weed::Stats.by_month(Date.today.year, Date.today.month, { :bucket_id => 13 })
+    assert_equal [2,0], Weed::Stats.by_month(Date.today.year, Date.today.month, {}) # no conditions
     # this shouldn't be days in month :/ it should be days up til now
     assert_equal Time.now.day, Weed::CachedStats.count(:conditions => { :year => Date.today.year, :month => Date.today.month, :period => "day", :bucket_id => 13 })
   end
@@ -59,13 +59,16 @@ class StatsTest < ActiveSupport::TestCase
   
   context "with trends" do
     it "gives a trend" do
+      Weed::Stats.delete_all
+      Weed::CachedStats.delete_all
+      
       date = Date.new(2010, 1, 4)
       2.times { Weed::Stats.hit!({ :bucket_id => 15, :cdate => date - 40}) }
       2.times { Weed::Stats.hit!({ :bucket_id => 15, :cdate => date - 20}) }
       2.times { Weed::Stats.hit!({ :bucket_id => 15, :cdate => date }) }
     
-      stats = Weed::Stats.by_month date.year, date.month, { :bucket_id => 15 }, :trend
-      assert_equal [2, nil], stats
+      stats = Weed::Stats.by_month date.year, date.month, { :bucket_id => 15 }
+      assert_equal [2, 0], stats
     end
     
     it "shows a rising trend" do
@@ -73,7 +76,7 @@ class StatsTest < ActiveSupport::TestCase
       2.times { Weed::Stats.hit!({ :bucket_id => 125, :cdate => date - 20}) }
       3.times { Weed::Stats.hit!({ :bucket_id => 125, :cdate => date }) }
     
-      stats = Weed::Stats.by_month date.year, date.month, { :bucket_id => 125 }, :trend
+      stats = Weed::Stats.by_month date.year, date.month, { :bucket_id => 125 }
       assert_equal [3, 50], stats
     end
     
@@ -82,7 +85,7 @@ class StatsTest < ActiveSupport::TestCase
       4.times { Weed::Stats.hit!({ :bucket_id => 135, :cdate => date - 20}) }
       2.times { Weed::Stats.hit!({ :bucket_id => 135, :cdate => date }) }
     
-      stats = Weed::Stats.by_month date.year, date.month, { :bucket_id => 135 }, :trend
+      stats = Weed::Stats.by_month date.year, date.month, { :bucket_id => 135 }
       assert_equal [2, -50], stats
     end
   end

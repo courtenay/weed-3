@@ -9,7 +9,7 @@ class Weed::CachedStats < Weed::ActiveRecord::Base
     if affected_count == 0
       create! args.merge(:counter => count)
     else
-      # $stderr.puts "overriding #{args.inspect} with #{count}"
+      # $stderr.puts "overriding #{args.inspect} with #{count} and #{trend}"
     end
   end
 end

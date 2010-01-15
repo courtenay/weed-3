@@ -45,7 +45,7 @@ class ApplicationTest < ActiveSupport::TestCase
     bucket = Weed::Bucket.create! :name => "bananas"
     get '/buckets/bananas'
     assert last_response.ok?
-    assert_equal({"bucket" => { "id" => bucket.id, "counter" => nil }}.to_json, last_response.body)
+    assert_equal({"bucket" => { "id" => bucket.id, "counter" => nil, "children" => [] }}, JSON.parse(last_response.body))
   end
   
   it "shows stats" do
@@ -77,7 +77,7 @@ class ApplicationTest < ActiveSupport::TestCase
     
     post '/record', { :q => { "bucket_id" => bucket.id }, :user => 'jimmy-5' }
     get "/stats/#{bucket.id}/#{Date.today.year}/#{Date.today.month}"
-    assert_equal({ "count" => 1, "bucket" => {"name" => "three", "parent_id" => nil}}, JSON.parse(last_response.body))
+    assert_equal({ "count" => [1, 0], "bucket" => {"name" => "three", "parent_id" => nil}}, JSON.parse(last_response.body))
   end
   
   it "shows total count with conditions" do
@@ -105,9 +105,25 @@ class ApplicationTest < ActiveSupport::TestCase
     get "/stats/#{bucket5.id}/#{Date.today.year}/#{Date.today.month}/#{Date.today.day}/week"
     assert_equal "[0,0,0,0,0,1,2]", last_response.body
   end
+  
+  it "shows stats per day for a month" do
+    Weed::CachedStats.delete_all # wtf
+    Weed::Stats.delete_all # wtf
+    bucket5 = Weed::Bucket.create :name => "Update5"
+    
+    Weed::Stats.hit! :cdate => 7.days.ago, :bucket_id => bucket5.id
+    Weed::Stats.hit! :cdate => 6.days.ago, :bucket_id => bucket5.id
+    Weed::Stats.hit! :cdate => 6.days.ago, :bucket_id => bucket5.id
+    Weed::Stats.hit! :cdate => 5.days.ago, :bucket_id => bucket5.id
+
+    get "/stats/#{bucket5.id}/#{Date.today.year}/#{Date.today.month}/month"
+    assert_equal "[0,0,0,0,0,0,0,1,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]", last_response.body
+  end
 
   # This slows the tests down by 3s. ugh.
   it "shows trends per day for a week" do
+    Weed::Stats.delete_all
+    
     Weed::Stats.hit! :cdate => 37.days.ago, :bucket_id => 59
     Weed::Stats.hit! :cdate => 36.days.ago, :bucket_id => 59
     Weed::Stats.hit! :cdate => 36.days.ago, :bucket_id => 59
@@ -115,12 +131,12 @@ class ApplicationTest < ActiveSupport::TestCase
 
     get "/trends/59/week/#{Date.today.year}/#{Date.today.month}/monthly"
     data = JSON.parse last_response.body
-    { "2009-8"  => [0,nil],
-      "2009-9"  => [0,nil],
-      "2009-10" => [0,nil],
-      "2009-11" => [0,nil],
-      "2009-12" => [3,nil],
-      "2010-1"  => [1,-67],
+    { "2009-8"  => [0, 0],
+      "2009-9"  => [0, 0],
+      "2009-10" => [0, 0],
+      "2009-11" => [0, 0],
+      "2009-12" => [3, 0],
+      "2010-1"  => [1, -67],
     }.each do |key,value|
       assert_equal value, data[key], "Unexpected result for #{key}: #{value}"
     end

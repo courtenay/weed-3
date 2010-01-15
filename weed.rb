@@ -99,9 +99,15 @@ module Weed
 
     # todo: auth
     
+    get "/buckets" do
+      Bucket.all.to_json
+    end
+
     get '/buckets/:name' do
       bucket = Bucket.find_by_name params[:name]
-      {"bucket" => { "id" => bucket && bucket.id, "counter" => bucket && bucket.counter }}.to_json
+      {"bucket" => { "id" => bucket && bucket.id, "counter" => bucket && bucket.counter,
+        "children" => bucket.child_ids
+      }}.to_json
     end
     
     # todo: test
@@ -143,7 +149,7 @@ module Weed
     end
     
     get "/stats/all/day" do
-      (0..60).map do |day|
+      (0..120).map do |day|
         date = Date.today - day
         [date, Stats.by_day(date, {})]
       end.to_json
@@ -197,7 +203,15 @@ module Weed
       date = Date.new(params[:year].to_i, params[:month].to_i, params[:day].to_i)
       # todo: i bet we could store this string in the month's data like [1,25,365,126] etc
       (0..6).map do |day|
-        Stats.by_day((date - day).to_date, { :bucket_id => params[:bucket_id] })
+        Stats.by_day((date - day), { :bucket_id => params[:bucket_id] })
+      end.to_json
+    end
+
+    #   "/stats/#{bucket5.id}/#{Date.today.year}/#{Date.today.month}/month"
+    get "/stats/:bucket_id/:year/:month/month" do
+      date = Date.new(params[:year].to_i, params[:month].to_i, 1)
+      (0..30).map do |day|
+        Stats.by_day((date + day), { :bucket_id => params[:bucket_id] })
       end.to_json
     end
 
@@ -206,7 +220,7 @@ module Weed
       # todo: i bet we could store this string in the month's data like [1,25,365,126] etc
       (0..6).inject({}) do |hash,current|
         hash["#{date.year}-#{date.month}"] = \
-          Stats.by_month(date.year, date.month, { :bucket_id => params[:bucket_id] }, :trend)
+          Stats.by_month(date.year.to_i, date.month.to_i, { :bucket_id => params[:bucket_id] })
         date = (date - 2).beginning_of_month # reliably go back a month
         hash
       end.to_json
