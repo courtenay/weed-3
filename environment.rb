@@ -9,12 +9,7 @@ module Weed
 #    include ::ActiveRecord
     class Base < ::ActiveRecord::Base
       self.abstract_class = true
-      def self.connection_args
-        {  :adapter => 'sqlite3',
-           :database =>  File.dirname(__FILE__) + '/db/weed3.sqlite3.db'
-        }
-      end
-      establish_connection(connection_args)
+      cattr_accessor :connection_args
     end
 
     class Migrator < ::ActiveRecord::Migrator

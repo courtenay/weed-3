@@ -2,6 +2,7 @@ require 'rake/tasklib'
 require 'rake/testtask'
 
 Rake::TestTask.new :test do |t|
+  RACK_ENV = :test
   t.libs << "test"
   t.test_files = FileList['test/*_test.rb']
   t.verbose = true
@@ -14,6 +15,10 @@ end
 namespace :db do
   desc "Migrate the database"
   task(:migrate => :environment) do
+    Weed::ActiveRecord::Base.connection_args = {  :adapter => 'sqlite3',
+     :database =>  File.dirname(__FILE__) + "/db/weed3.#{RACK_ENV}.sqlite3.db"
+    }
+    
     module Weed
       Weed::ActiveRecord::Base.logger = Logger.new(STDOUT)
       ActiveRecord::Migration.verbose = true
