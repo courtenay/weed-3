@@ -6,6 +6,13 @@ module Weed
   class Application < Sinatra::Base
     disable :run, :reload
     enable :logging
+    configure :development do
+      $stderr.puts "Config"
+      Weed::ActiveRecord::Base.connection_args = {  :adapter => 'sqlite3',
+       :database =>  File.dirname(__FILE__) + "/db/weed3.development.sqlite3.db"
+      }
+      Weed::ActiveRecord::Base.establish_connection(Weed::ActiveRecord::Base.connection_args)
+    end
     configure :test do
       Weed::ActiveRecord::Base.connection_args = {  :adapter => 'sqlite3',
        :database =>  File.dirname(__FILE__) + "/db/weed3.test.sqlite3.db"
@@ -13,11 +20,7 @@ module Weed
       Weed::ActiveRecord::Base.establish_connection(Weed::ActiveRecord::Base.connection_args)
     end
     
-    configure :development do
-      Weed::ActiveRecord::Base.establish_connection({  :adapter => 'sqlite3',
-        :database =>  File.dirname(__FILE__) + "/db/weed3.sqlite3.db"
-      })
-    end
+    Weed::ActiveRecord::Base.establish_connection(Weed::ActiveRecord::Base.connection_args)
 
     # Load all the models here so we don't namespace conflict
     $LOAD_PATH.unshift("#{File.dirname(__FILE__)}/lib")
