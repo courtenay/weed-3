@@ -5,7 +5,7 @@ class CreateStats < Weed::ActiveRecord::Migration
       f.integer :counter
       f.datetime :cdate
       f.timestamps
-      t.index :bucket_id
+      f.index :bucket_id
     end
     create_table :cached_stats do |f|
       f.integer :bucket_id
