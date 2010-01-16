@@ -34,15 +34,12 @@ class Weed::Stats < Weed::ActiveRecord::Base
     cached_conditions = { :bucket_id => nil }.merge(conditions)
     Weed::CachedStats.with_scope(:find => {:conditions => cached_conditions}) do
       unless cached = Weed::CachedStats.first(:conditions => ['period = ? AND year = ? AND month = ? AND day = ?', 'day', date.year, date.month, date.day])
-        logger.info "Did not find cached stats for #{date} / #{conditions.inspect}"
         day = Weed::Stats.with_scope(:find => { :conditions => conditions }) do
           Weed::Stats.sum "counter", :conditions => ['cdate >= ? AND cdate < ?', date.beginning_of_day, (date + 1).beginning_of_day]
         end
-      # day = results.is_a?(Hash) ? results.values : [results] # maybe not needed?
         Weed::CachedStats.override conditions.merge({:year => date.year, :month => date.month, :day => date.day, :period => 'day', :counter => day, :cdate => date })
         day
       else
-        logger.info "Found cached stats for #{date} / #{cached.counter}"
         cached.counter
       end
     end
@@ -61,31 +58,25 @@ class Weed::Stats < Weed::ActiveRecord::Base
       )
     end # scope
     if cached.size >= (end_date - start_date)
-      logger.warn "******* cached.size = #{cached.size}"
-      
       # we have all the numbers here hopefully not too many
       blob = Weed::CachedBlob.create(conditions.merge({ :start_date => start_date,
         :end_date   => end_date,
         :counters   => cached.map(&:counter).to_json }))
       blob.counters
     else
-      logger.warn "******* cached.size = #{cached.size}"
       date = start_date
       while (date < end_date)
         date += 1.day
-        logger.warn "** checking #{conditions.inspect} for #{date.inspect}"
         if !cached.any? { |c| c.day == date.day }
           data = by_day(date, conditions)
           if data == 0
           else
             cached << data
           end
-          # why isn't by_day creating records?
         else
           logger.warn "Cached included day #{date.day}"
         end
       end
-      logger.warn "******* by day range #{start_date} #{end_date} #{conditions.inspect}"
       # hopefully this doesn't cause an infinite loop!
       # it does, in some cases. investigate *why*
       return by_day_range(start_date, end_date, conditions)
