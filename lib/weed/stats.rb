@@ -34,13 +34,15 @@ class Weed::Stats < Weed::ActiveRecord::Base
     cached_conditions = { :bucket_id => nil }.merge(conditions)
     Weed::CachedStats.with_scope(:find => {:conditions => cached_conditions}) do
       unless cached = Weed::CachedStats.first(:conditions => ['period = ? AND year = ? AND month = ? AND day = ?', 'day', date.year, date.month, date.day])
+        logger.info "Did not find cached stats for #{date} / #{conditions.inspect}"
         day = Weed::Stats.with_scope(:find => { :conditions => conditions }) do
           Weed::Stats.sum "counter", :conditions => ['cdate >= ? AND cdate < ?', date.beginning_of_day, (date + 1).beginning_of_day]
         end
       # day = results.is_a?(Hash) ? results.values : [results] # maybe not needed?
-        Weed::CachedStats.override conditions.merge({:year => date.year, :month => date.month, :day => date.day, :period => 'day', :counter => day})
+        Weed::CachedStats.override conditions.merge({:year => date.year, :month => date.month, :day => date.day, :period => 'day', :counter => day, :cdate => date })
         day
       else
+        logger.info "Found cached stats for #{date} / #{cached.counter}"
         cached.counter
       end
     end
@@ -52,38 +54,44 @@ class Weed::Stats < Weed::ActiveRecord::Base
       # todo: if conditions[:end_date] > end_date then just truncate the string?
       return blob.counters
     end
-    results = Weed::CachedStats.with_scope(:find => {:conditions => conditions}) do
-      if start_date.month == end_date.month 
-        cached = Weed::CachedStats.find(:all, 
-          :conditions => ['period = ? AND (year = ? AND month = ? AND day >= ? AND day <= ?)',
-            'day', start_date.year, end_date.month, start_date.day, end_date.day]
-        )
-      else
-        cached = Weed::CachedStats.find(:all, 
-          :conditions => ['period = ? AND (year >= ? AND month >= ? AND day >= ?) AND (year <= ? AND month <= ? AND day <= ?)', 'day', start_date.year, start_date.month, start_date.day, end_date.year, end_date.month, end_date.day]
-        )
-      end
-      if cached.size >= (end_date - start_date)
-        # we have all the numbers here hopefully not too many
-        cached.map &:counter
-      else
-        date = start_date
-        while (date < end_date)
-          if !cached.any? { |c| c.day == date.day }
-            cached << by_day(date, conditions)
+    cached = Weed::CachedStats.with_scope(:find => {:conditions => conditions}) do
+      Weed::CachedStats.find(:all, 
+        :conditions => ['period = ? AND cdate >= ? AND cdate <= ?',
+          'day',  start_date, end_date]
+      )
+    end # scope
+    if cached.size >= (end_date - start_date)
+      logger.warn "******* cached.size = #{cached.size}"
+      
+      # we have all the numbers here hopefully not too many
+      blob = Weed::CachedBlob.create(conditions.merge({ :start_date => start_date,
+        :end_date   => end_date,
+        :counters   => cached.map(&:counter).to_json }))
+      blob.counters
+    else
+      logger.warn "******* cached.size = #{cached.size}"
+      date = start_date
+      while (date < end_date)
+        date += 1.day
+        logger.warn "** checking #{conditions.inspect} for #{date.inspect}"
+        if !cached.any? { |c| c.day == date.day }
+          data = by_day(date, conditions)
+          if data == 0
+          else
+            cached << data
           end
-          date += 1
+          # why isn't by_day creating records?
+        else
+          logger.warn "Cached included day #{date.day}"
         end
-        # hopefully this doesn't cause an infinite loop!
-        return by_day_range(start_date, end_date, conditions)
-        # raise "Missing Cached Stats #todo expected #{end_date-start_date} but saw #{cached.size}"
-        # should probably call by_day(start_date) on each missing day
       end
+      logger.warn "******* by day range #{start_date} #{end_date} #{conditions.inspect}"
+      # hopefully this doesn't cause an infinite loop!
+      # it does, in some cases. investigate *why*
+      return by_day_range(start_date, end_date, conditions)
+      raise "Missing Cached Stats #todo expected #{end_date-start_date} but saw #{cached.size}\n#{cached.inspect}"
+      # should probably call by_day(start_date) on each missing day
     end
-    Weed::CachedBlob.create(conditions.merge({ :start_date => start_date,
-      :end_date   => end_date,
-      :counters   => results.join(",") }))
-    results
   end
   
   def self.find_by_day(date, conditions)

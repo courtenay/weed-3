@@ -140,15 +140,15 @@ class ApplicationTest < ActiveSupport::TestCase
     get "/stats/#{bucket_parent.id}/#{Date.today.year}/#{Date.today.month}/month"
     expected = [
       {'bucket' => {'name' => 'tender-500', 'id' => bucket_parent.id },
-       'data' => [0,0,0,0,0,0,0,1,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+       'data' => "0,0,0,0,0,0,0,1,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
        'children' => [
          {
            'bucket' => {'name' => 'monkey', 'id' => bucketm.id},
-           'data' => [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+           'data' => "0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
          },
          {
            'bucket' => {'name' => 'cucumber', 'id' => bucketc.id},
-           'data' => [0,0,0,0,0,0,0,0,1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+           'data' => "0,0,0,0,0,0,0,0,1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
          }
        ]
       }
@@ -174,11 +174,11 @@ class ApplicationTest < ActiveSupport::TestCase
 
     get "/trends/59/week/#{Date.today.year}/#{Date.today.month}/monthly"
     data = JSON.parse last_response.body
-    { "2009-8"  => [0, 0],
-      "2009-9"  => [0, 0],
-      "2009-10" => [0, 0],
-      "2009-11" => [0, 0],
-      "2009-12" => [3, 0],
+    { "2009-8"  => [0, nil],
+      "2009-9"  => [0, nil],
+      "2009-10" => [0, nil],
+      "2009-11" => [0, nil],
+      "2009-12" => [3, nil],
       "2010-1"  => [1, -67],
     }.each do |key,value|
       assert_equal value, data[key], "Unexpected result for #{key}: #{value}"
