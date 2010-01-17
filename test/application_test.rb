@@ -117,11 +117,14 @@ class ApplicationTest < ActiveSupport::TestCase
     Weed::Stats.hit! :cdate => 5.days.ago, :bucket_id => bucket5.id
 
     get "/stats/#{bucket5.id}/#{Date.today.year}/#{Date.today.month}/month"
-    json = JSON.parse(last_response.body)
-    expected = [0,0,0,0,0,0,0,1,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    assert_equal "[0,0,0,0,0,0,0,1,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]", 
+      last_response.body
+    
+    #json = JSON.parse(last_response.body)
+    #expected = [0,0,0,0,0,0,0,1,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     # this might fail with a lack of padding for 31-month days.
-    assert_equal expected.size, json.size
-    assert_equal expected, json
+    #assert_equal expected.size, json.size
+    #assert_equal expected, json
   end
   
   it "shows stats per day for all child nodes for a week" do
@@ -140,15 +143,15 @@ class ApplicationTest < ActiveSupport::TestCase
     get "/stats/#{bucket_parent.id}/#{Date.today.year}/#{Date.today.month}/month"
     expected = [
       {'bucket' => {'name' => 'tender-500', 'id' => bucket_parent.id },
-       'data' => "0,0,0,0,0,0,0,1,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
+       'data' => "[0,0,0,0,0,0,0,1,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]",
        'children' => [
          {
            'bucket' => {'name' => 'monkey', 'id' => bucketm.id},
-           'data' => "0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+           'data' => "[0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]"
          },
          {
            'bucket' => {'name' => 'cucumber', 'id' => bucketc.id},
-           'data' => "0,0,0,0,0,0,0,0,1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+           'data' => "[0,0,0,0,0,0,0,0,1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]"
          }
        ]
       }

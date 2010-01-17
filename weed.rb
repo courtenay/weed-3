@@ -214,16 +214,17 @@ module Weed
       bucket = Bucket.find params[:bucket_id]
       date = Date.new(params[:year].to_i, params[:month].to_i, 1)
       if bucket.children.empty?
-        Stats.by_day_range(date, date + 30, { :bucket_id => params[:bucket_id]}).to_json
+        Stats.by_day_range(date, date + 30, { :bucket_id => params[:bucket_id]}) #.to_json
       else
         data = Stats.by_day_range(date, date + 30, { :bucket_id => params[:bucket_id]})
         [{
           "bucket"   => {"name" => bucket.name, "id" => bucket.id},
           "data"     => data,
           "children" => bucket.children.map do |child|
+             data = Stats.by_day_range(date, date+30, { :bucket_id => child.id })
              {
                "bucket" => {"name" => child.name, "id" => child.id},
-               "data"   => Stats.by_day_range(date, date+30, { :bucket_id => child.id })
+               "data"   => data #.split(",").map{|d| d.to_i }
              }
            end
         }].to_json

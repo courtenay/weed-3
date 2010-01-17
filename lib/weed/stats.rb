@@ -61,7 +61,7 @@ class Weed::Stats < Weed::ActiveRecord::Base
       # we have all the numbers here hopefully not too many
       blob = Weed::CachedBlob.create(conditions.merge({ :start_date => start_date,
         :end_date   => end_date,
-        :counters   => cached.map(&:counter).to_json }))
+        :counters   => "[" + cached.map(&:counter).join(",") + "]" }))
       blob.counters
     else
       date = start_date

@@ -19,11 +19,24 @@ class StatsTest < ActiveSupport::TestCase
   end
   
   it "calculates daily results" do
+    Weed::Stats.delete_all
     2.times { Weed::Stats.hit!({ :bucket_id => 13, :cdate => Time.now }) }
     3.times { Weed::Stats.hit!({ :bucket_id => 14, :cdate => Time.now }) }
     assert_equal 2, Weed::Stats.by_day(Date.today, { :bucket_id => 13 })
     assert_equal 3, Weed::Stats.by_day(Date.today, { :bucket_id => 14 })
     assert_equal 5, Weed::Stats.by_day(Date.today, { })
+  end
+  
+  it "calculates daily range results" do
+    Weed::Stats.delete_all
+    2.times { Weed::Stats.hit!({ :bucket_id => 130, :cdate => Time.now }) }
+    3.times { Weed::Stats.hit!({ :bucket_id => 140, :cdate => Time.now }) }
+    
+    assert_equal "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2", 
+      Weed::Stats.by_day_range(1.month.ago.to_date, Date.today, { :bucket_id => 130 })
+
+    assert_equal "0,0,0,0,0,0,2", 
+      Weed::Stats.by_day_range(7.days.ago.to_date, Date.today, { :bucket_id => 130 })
   end
   
   it "calculates monthly results" do
